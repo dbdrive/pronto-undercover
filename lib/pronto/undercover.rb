@@ -4,6 +4,7 @@ require 'pronto'
 require 'undercover/options'
 require 'undercover'
 require 'pronto/patch_changeset'
+require 'json'
 
 module Pronto
   # Runner class for undercover
@@ -19,10 +20,13 @@ module Pronto
     def run
       return [] if !@patches || @patches.count.zero?
 
-      @patches
+      overall_coverage_message = Message.new(nil, nil, :info, total_coverage_message, nil, self.class)
+      patch_messages = @patches
         .select { |patch| valid_patch?(patch) }
         .map { |patch| patch_to_undercover_message(patch) }
         .flatten.compact
+
+      [overall_coverage_message, patch_messages]
     rescue Errno::ENOENT => e
       warn("Could not open file! #{e}")
       []
@@ -32,6 +36,16 @@ module Pronto
 
     def valid_patch?(patch)
       patch.additions.positive? && ruby_file?(patch.new_file_full_path)
+    end
+
+    def total_coverage_message
+      base_json = JSON.parse(File.read('coverage/.last_base_run.json'))
+      head_json = JSON.parse(File.read('coverage/.last_run.json'))
+      base_covered_percent = base_json['result']['covered_percent']
+      head_covered_percent = head_json['result']['covered_percent']
+      diff = head_covered_percent - base_covered_percent
+
+      "base branch: **#{base_covered_percent}**, head branch: **#{head_covered_percent}**, diff: **#{diff.round(2)}**"
     end
 
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
