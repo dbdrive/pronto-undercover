@@ -45,7 +45,11 @@ module Pronto
       head_covered_percent = head_json['result']['covered_percent']
       diff = head_covered_percent - base_covered_percent
 
-      "base branch: **#{base_covered_percent}**, head branch: **#{head_covered_percent}**, diff: **#{diff.round(2)}**"
+      [
+        "base branch: **#{base_covered_percent.round(2)}%**",
+        "head branch: **#{head_covered_percent.round(2)}%**",
+        "diff: **#{diff.round(2)}%**"
+      ].join(', ')
     end
 
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
