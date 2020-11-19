@@ -20,13 +20,12 @@ module Pronto
     def run
       return [] if !@patches || @patches.count.zero?
 
-      overall_coverage_message = Message.new(nil, nil, :info, total_coverage_message, nil, self.class)
       patch_messages = @patches
         .select { |patch| valid_patch?(patch) }
         .map { |patch| patch_to_undercover_message(patch) }
         .flatten.compact
 
-      [overall_coverage_message, patch_messages]
+      coverage_diff_messages + patch_messages
     rescue Errno::ENOENT => e
       warn("Could not open file! #{e}")
       []
@@ -36,20 +35,6 @@ module Pronto
 
     def valid_patch?(patch)
       patch.additions.positive? && ruby_file?(patch.new_file_full_path)
-    end
-
-    def total_coverage_message
-      base_json = JSON.parse(File.read('coverage/.last_base_run.json'))
-      head_json = JSON.parse(File.read('coverage/.last_run.json'))
-      base_covered_percent = base_json['result']['covered_percent']
-      head_covered_percent = head_json['result']['covered_percent']
-      diff = head_covered_percent - base_covered_percent
-
-      [
-        "base branch: **#{base_covered_percent.round(2)}%**",
-        "head branch: **#{head_covered_percent.round(2)}%**",
-        "diff: **#{diff.round(2)}%**"
-      ].join(', ')
     end
 
     # rubocop:disable Metrics/MethodLength, Metrics/AbcSize
@@ -64,11 +49,34 @@ module Pronto
             msg = "#{warning.node.human_name} #{warning.node.name} missing tests" \
                   " for line#{'s' if lines.size > 1} #{lines.join(', ')}" \
                   " (coverage: #{warning.coverage_f})"
-            Message.new(path, line, DEFAULT_LEVEL, msg, nil, self.class)
+            create_message(path, line, DEFAULT_LEVEL, msg)
           end
       end
     end
     # rubocop:enable Metrics/MethodLength, Metrics/AbcSize
+
+    def coverage_diff_messages
+      base_coverage = read_covered_percent('coverage/.last_base_run.json') # manual copy of last run
+      head_coverage = read_covered_percent('coverage/.last_run.json')
+      return [] if !base_coverage || !head_coverage
+
+      title = '**Coverage Report**'
+      diff = [
+        "base: **#{base_coverage.round(2)}%**",
+        "head: **#{head_coverage.round(2)}%**",
+        "diff: **#{(head_coverage - base_coverage).round(2)}%**"
+      ].join(', ')
+
+      [title, diff].map { |text| create_message(nil, nil, :info, text) }
+    end
+
+    def read_covered_percent(path)
+      JSON.parse(File.read(path))['result']['covered_percent'] if File.exist?(path)
+    end
+
+    def create_message(path, line, level, text, commit_sha = nil)
+      Message.new(path, line, level, text, commit_sha, self.class)
+    end
 
     def undercover_warnings
       @undercover_warnings ||= ::Undercover::Report.new(
