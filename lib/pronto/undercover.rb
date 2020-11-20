@@ -62,9 +62,9 @@ module Pronto
 
       title = '**Coverage Report**'
       diff = [
-        "base: **#{base_coverage.round(2)}%**",
-        "head: **#{head_coverage.round(2)}%**",
-        "diff: **#{d = (head_coverage - base_coverage).round(2); d < 0 ? "#{d}% 👎" : "+#{d}% 👍"}**"
+        "base: **#{base_coverage.round(3)}%**",
+        "head: **#{head_coverage.round(3)}%**",
+        "diff: **#{d = (head_coverage - base_coverage).round(3); d < 0 ? "#{d}% 👎" : "+#{d}% 👍"}**"
       ].join(', ')
 
       [title, diff].map { |text| create_message(nil, nil, :info, text) }
