@@ -64,7 +64,7 @@ module Pronto
       diff = [
         "base: **#{base_coverage.round(2)}%**",
         "head: **#{head_coverage.round(2)}%**",
-        "diff: **#{(head_coverage - base_coverage).round(2)}%**"
+        "diff: **#{d = (head_coverage - base_coverage).round(2); d < 0 ? "#{d}% 👎" : "+#{d}% 👍"}**"
       ].join(', ')
 
       [title, diff].map { |text| create_message(nil, nil, :info, text) }
